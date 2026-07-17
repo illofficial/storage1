@@ -26,7 +26,7 @@ from qdrant_client.models import (
 from app.models.rag import RAGConfig, RetrieveContextRequest, ScoredDocument
 from app.services.retry import retry_on_rate_limit
 
-from typing import Callable
+from collections.abc import Callable
 
 logger = logging.getLogger(__name__)
 
