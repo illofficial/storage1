@@ -1,12 +1,9 @@
-import asyncio
 import logging
-import time
-import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
-from openai import APIError, BadRequestError
+from openai import APIError
 
 from app.dependencies import get_agent_orchestrator, get_llm_service
 from app.models.agent import MaxIterationsExceededError, UserRequest
@@ -23,31 +20,32 @@ LLMServiceDep = Annotated[LLMService, Depends(get_llm_service)]
 
 @router.post("/chat")
 async def chat(
-    request: Request,
     payload: UserRequest,
     agent: AgentDep,
     llm_service: LLMServiceDep,
 ) -> StreamingResponse:
+    """Resolve the request through the agent's tool loop and stream the answer back.
+
+    The :class:`AgentOrchestrator` performs any tool calls and returns a message
+    context; :class:`LLMService` then streams the final natural-language answer to
+    the client token-by-token via ``StreamingResponse``.
     """
-    Resolve the request through the agent's tool loop and stream the answer back.
+    try:
+        context = await agent.build_context(payload.message)
+    except MaxIterationsExceededError as exc:
+        logger.warning("Agent exceeded its iteration limit while handling a chat request")
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="The agent could not complete the request within its step budget.",
+        ) from exc
+    except APIError as exc:
+        logger.exception("Upstream LLM error while building the agent context")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Upstream language model error.",
+        ) from exc
 
-    The agent performs any necessary tool calls and returns a message context,
-    then the LLM service streams the final natural-language answer to the client.
-
-    ## Flow:
-    1. Agent builds context with tool resolution
-    2. LLM service streams the final answer
-    3. Client receives tokens via Server-Sent Events
-
-    ## Error Responses:
-    - 400: Invalid request or context too long
-    - 429: Agent exceeded iteration limit
-    - 502: OpenAI API error
-    - 504: Agent execution timeout
-    - 499: Client disconnected
-
-    ## Example:
-        ```bash
-        curl -N -X POST http://localhost:8000/v1/chat \\
-          -H 'Content-Type: application/json' \\
-          -d '{"message": "Show me my transactions for July 2026"}'
+    return StreamingResponse(
+        llm_service.stream_completion(context, model=agent.model),
+        media_type="text/event-stream",
+    )
