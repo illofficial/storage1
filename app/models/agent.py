@@ -165,7 +165,7 @@ class AgentRequest(BaseModel):
         examples=["What was my total spending in July?"],
     )
     model: str = Field(
-        default=settings.OPENAI_MODEL,
+        default=settings.openai_model,
         min_length=1,
         description="OpenAI model to use for this request",
     )
