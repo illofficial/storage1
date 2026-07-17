@@ -613,6 +613,7 @@ class RAGService:
             limit: Maximum number of documents to return.
                   If None, uses RAGConfig.default_retrieval_limit.
         """
+        default_retrieval_limit: int = Field(default=3, ge=1, le=50)
         if limit is None:
             limit = self._config.default_retrieval_limit or 3
 
