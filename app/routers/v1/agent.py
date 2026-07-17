@@ -30,22 +30,22 @@ async def chat(
 ) -> StreamingResponse:
     """
     Resolve the request through the agent's tool loop and stream the answer back.
-    
+
     The agent performs any necessary tool calls and returns a message context,
     then the LLM service streams the final natural-language answer to the client.
-    
+
     ## Flow:
     1. Agent builds context with tool resolution
     2. LLM service streams the final answer
     3. Client receives tokens via Server-Sent Events
-    
+
     ## Error Responses:
     - 400: Invalid request or context too long
     - 429: Agent exceeded iteration limit
     - 502: OpenAI API error
     - 504: Agent execution timeout
     - 499: Client disconnected
-    
+
     ## Example:
         ```bash
         curl -N -X POST http://localhost:8000/v1/chat \\
