@@ -102,7 +102,10 @@ class RAGConfig(BaseModel):
         default=0.7,
         ge=0.0,
         le=1.0,
-        description="Weight for vector search in hybrid scoring (0.0 = keyword only, 1.0 = vector only)",
+        description=(
+            "Weight for vector search in hybrid scoring "
+            "(0.0 = keyword only, 1.0 = vector only)"
+        ),
         examples=[0.7, 0.8, 1.0],
     )
     rrf_k: int = Field(
